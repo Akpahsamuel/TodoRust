@@ -73,8 +73,8 @@ export function useFloat<T extends HTMLElement>(amplitude = 12, duration = 3, de
 /**
  * Number counter animation — counts from 0 to target value.
  */
-export function useCountUp(target: number, duration = 1) {
-    const ref = useRef<HTMLElement>(null);
+export function useCountUp<T extends HTMLElement = HTMLParagraphElement>(target: number, duration = 1) {
+    const ref = useRef<T>(null);
     const prevTarget = useRef(0);
 
     useEffect(() => {
