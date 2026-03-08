@@ -14,6 +14,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { WelcomePage } from './pages/WelcomePage';
 import { useThemeStore } from './store/theme.store';
 import { useEffect } from 'react';
+import { useKeepAlive } from './hooks/useKeepAlive';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -36,6 +37,7 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   const isDark = useThemeStore((s) => s.isDark);
+  useKeepAlive();
 
   useEffect(() => {
     if (isDark) {
