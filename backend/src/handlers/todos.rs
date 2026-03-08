@@ -165,8 +165,9 @@ pub async fn create_todo(
     let position = max_pos.map(|p| p + 1).unwrap_or(0);
 
     let status = body.status.as_ref().unwrap_or(&TodoStatus::Pending);
-    let started_at = if status == &TodoStatus::InProgress { Some("NOW()") } else { None };
-    let completed_at = if status == &TodoStatus::Completed { Some("NOW()") } else { None };
+    let now = chrono::Utc::now();
+    let started_at = if status == &TodoStatus::InProgress { Some(now) } else { None };
+    let completed_at = if status == &TodoStatus::Completed { Some(now) } else { None };
 
     let todo = sqlx::query_as::<_, Todo>(
         "INSERT INTO todos (user_id, category_id, title, description, status, priority, due_date, position, started_at, completed_at)
