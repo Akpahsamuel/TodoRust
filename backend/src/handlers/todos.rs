@@ -164,6 +164,24 @@ pub async fn create_todo(
 
     let position = max_pos.map(|p| p + 1).unwrap_or(0);
 
+    // Verify category belongs to the authenticated user
+    if let Some(category_id) = body.category_id {
+        let category_exists = sqlx::query_scalar::<_, Uuid>(
+            "SELECT id FROM categories WHERE id = $1 AND user_id = $2",
+        )
+        .bind(category_id)
+        .bind(auth_user.id)
+        .fetch_optional(&state.db)
+        .await?;
+
+        if category_exists.is_none() {
+            return Err(AppError::Validation(format!(
+                "Category {} not found or does not belong to you",
+                category_id
+            )));
+        }
+    }
+
     let status = body.status.as_ref().unwrap_or(&TodoStatus::Pending);
     let now = chrono::Utc::now();
     let started_at = if status == &TodoStatus::InProgress { Some(now) } else { None };
@@ -187,22 +205,37 @@ pub async fn create_todo(
     .fetch_one(&state.db)
     .await?;
 
-    // Attach tags
+    // Attach tags (verify each tag belongs to the authenticated user)
     if let Some(tag_ids) = body.tag_ids {
         for tag_id in tag_ids {
-            let _ = sqlx::query(
+            let tag_exists = sqlx::query_scalar::<_, Uuid>(
+                "SELECT id FROM tags WHERE id = $1 AND user_id = $2",
+            )
+            .bind(tag_id)
+            .bind(auth_user.id)
+            .fetch_optional(&state.db)
+            .await?;
+
+            if tag_exists.is_none() {
+                return Err(AppError::Validation(format!(
+                    "Tag {} not found or does not belong to you",
+                    tag_id
+                )));
+            }
+
+            sqlx::query(
                 "INSERT INTO todo_tags (todo_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
             )
             .bind(todo.id)
             .bind(tag_id)
             .execute(&state.db)
-            .await;
+            .await?;
         }
     }
 
     // Broadcast via WebSocket
     if let Some(tx) = &state.ws_tx {
-        let msg = serde_json::json!({ "type": "todo_created", "data": &todo });
+        let msg = serde_json::json!({ "type": "todo_created", "user_id": auth_user.id.to_string(), "data": &todo });
         let _ = tx.send(msg.to_string());
     }
 
@@ -249,6 +282,24 @@ pub async fn update_todo(
     .await?
     .ok_or_else(|| AppError::NotFound(format!("Todo {} not found", id)))?;
 
+    // Verify category belongs to the authenticated user
+    if let Some(category_id) = body.category_id {
+        let category_exists = sqlx::query_scalar::<_, Uuid>(
+            "SELECT id FROM categories WHERE id = $1 AND user_id = $2",
+        )
+        .bind(category_id)
+        .bind(auth_user.id)
+        .fetch_optional(&state.db)
+        .await?;
+
+        if category_exists.is_none() {
+            return Err(AppError::Validation(format!(
+                "Category {} not found or does not belong to you",
+                category_id
+            )));
+        }
+    }
+
     // Handle time tracking based on status changes
     let mut time_tracking_updates = String::new();
     if let Some(new_status) = &body.status {
@@ -261,10 +312,10 @@ pub async fn update_todo(
             (_, TodoStatus::Completed) if existing.completed_at.is_none() => {
                 time_tracking_updates.push_str(", completed_at = NOW()");
                 if let Some(started) = existing.started_at {
-                    let started_str = started.to_rfc3339();
+                    let elapsed = (chrono::Utc::now() - started).num_seconds().max(0);
                     time_tracking_updates.push_str(&format!(
-                        ", time_elapsed_seconds = EXTRACT(EPOCH FROM (NOW() - '{}'::timestamptz))::bigint",
-                        started_str
+                        ", time_elapsed_seconds = {}",
+                        elapsed
                     ));
                 }
             }
@@ -307,27 +358,45 @@ pub async fn update_todo(
     .fetch_one(&state.db)
     .await?;
 
-    // Update tags if provided
+    // Verify and update tags if provided
     if let Some(tag_ids) = body.tag_ids {
+        // Verify all tags belong to the authenticated user before making changes
+        for tag_id in &tag_ids {
+            let tag_exists = sqlx::query_scalar::<_, Uuid>(
+                "SELECT id FROM tags WHERE id = $1 AND user_id = $2",
+            )
+            .bind(tag_id)
+            .bind(auth_user.id)
+            .fetch_optional(&state.db)
+            .await?;
+
+            if tag_exists.is_none() {
+                return Err(AppError::Validation(format!(
+                    "Tag {} not found or does not belong to you",
+                    tag_id
+                )));
+            }
+        }
+
         sqlx::query("DELETE FROM todo_tags WHERE todo_id = $1")
             .bind(id)
             .execute(&state.db)
             .await?;
 
         for tag_id in tag_ids {
-            let _ = sqlx::query(
+            sqlx::query(
                 "INSERT INTO todo_tags (todo_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
             )
             .bind(id)
             .bind(tag_id)
             .execute(&state.db)
-            .await;
+            .await?;
         }
     }
 
     // Broadcast
     if let Some(tx) = &state.ws_tx {
-        let msg = serde_json::json!({ "type": "todo_updated", "data": &todo });
+        let msg = serde_json::json!({ "type": "todo_updated", "user_id": auth_user.id.to_string(), "data": &todo });
         let _ = tx.send(msg.to_string());
     }
 
@@ -351,7 +420,7 @@ pub async fn delete_todo(
 
     // Broadcast
     if let Some(tx) = &state.ws_tx {
-        let msg = serde_json::json!({ "type": "todo_deleted", "id": id });
+        let msg = serde_json::json!({ "type": "todo_deleted", "user_id": auth_user.id.to_string(), "id": id });
         let _ = tx.send(msg.to_string());
     }
 
@@ -387,10 +456,10 @@ pub async fn update_status(
         (_, TodoStatus::Completed) if existing.completed_at.is_none() => {
             time_tracking_updates.push_str(", completed_at = NOW()");
             if let Some(started) = existing.started_at {
-                let started_str = started.to_rfc3339();
+                let elapsed = (chrono::Utc::now() - started).num_seconds().max(0);
                 time_tracking_updates.push_str(&format!(
-                    ", time_elapsed_seconds = EXTRACT(EPOCH FROM (NOW() - '{}'::timestamptz))::bigint",
-                    started_str
+                    ", time_elapsed_seconds = {}",
+                    elapsed
                 ));
             }
         }
@@ -420,7 +489,7 @@ pub async fn update_status(
     .await?;
 
     if let Some(tx) = &state.ws_tx {
-        let msg = serde_json::json!({ "type": "todo_updated", "data": &todo });
+        let msg = serde_json::json!({ "type": "todo_updated", "user_id": auth_user.id.to_string(), "data": &todo });
         let _ = tx.send(msg.to_string());
     }
 

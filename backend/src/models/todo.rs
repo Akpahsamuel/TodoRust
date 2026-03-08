@@ -69,6 +69,7 @@ pub struct CreateTodoDto {
         message = "Title must be between 1 and 255 characters"
     ))]
     pub title: String,
+    #[validate(length(max = 5000))]
     pub description: Option<String>,
     pub status: Option<TodoStatus>,
     pub priority: Option<TodoPriority>,
@@ -81,6 +82,7 @@ pub struct CreateTodoDto {
 pub struct UpdateTodoDto {
     #[validate(length(min = 1, max = 255))]
     pub title: Option<String>,
+    #[validate(length(max = 5000))]
     pub description: Option<String>,
     pub status: Option<TodoStatus>,
     pub priority: Option<TodoPriority>,

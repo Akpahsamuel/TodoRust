@@ -9,6 +9,7 @@ pub struct Config {
     pub jwt_access_expiry_minutes: i64,
     pub jwt_refresh_expiry_days: i64,
     pub port: u16,
+    pub frontend_url: String,
 }
 
 impl Config {
@@ -35,6 +36,8 @@ impl Config {
                 .unwrap_or_else(|_| "8080".into())
                 .parse()
                 .unwrap_or(8080),
+            frontend_url: env::var("FRONTEND_URL")
+                .unwrap_or_else(|_| "http://localhost:5173".into()),
         })
     }
 }

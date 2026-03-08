@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
+use axum::http::HeaderValue;
 use tokio::sync::broadcast;
-use tower_http::cors::{Any, CorsLayer};
+use tower_http::cors::{AllowOrigin, Any, CorsLayer};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
@@ -35,9 +36,14 @@ async fn main() -> anyhow::Result<()> {
         ws_tx: Some(ws_tx),
     };
 
-    // Build CORS layer - allow all origins for development
+    // Build CORS layer - restrict to configured frontend origin
+    let frontend_origin: HeaderValue = state
+        .config
+        .frontend_url
+        .parse()
+        .expect("FRONTEND_URL must be a valid header value");
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin(AllowOrigin::exact(frontend_origin))
         .allow_methods(Any)
         .allow_headers(Any);
 
