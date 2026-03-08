@@ -37,7 +37,7 @@ impl Config {
                 .parse()
                 .unwrap_or(8080),
             frontend_url: env::var("FRONTEND_URL")
-                .unwrap_or_else(|_| "http://localhost:5173".into()),
+                .unwrap_or_else(|_| "https://todorust-mhsm.onrender.com".into()),
         })
     }
 }
