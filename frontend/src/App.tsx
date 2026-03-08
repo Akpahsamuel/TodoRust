@@ -11,6 +11,7 @@ import { CategoriesPage } from './pages/CategoriesPage';
 import { TagsPage } from './pages/TagsPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { SettingsPage } from './pages/SettingsPage';
+import { WelcomePage } from './pages/WelcomePage';
 import { useThemeStore } from './store/theme.store';
 import { useEffect } from 'react';
 
@@ -25,7 +26,7 @@ const queryClient = new QueryClient({
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
+  return isAuthenticated ? <>{children}</> : <Navigate to="/welcome" replace />;
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
@@ -49,6 +50,7 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           {/* Public */}
+          <Route path="/welcome" element={<PublicRoute><WelcomePage /></PublicRoute>} />
           <Route path="/login" element={<PublicRoute><LoginForm /></PublicRoute>} />
           <Route path="/register" element={<PublicRoute><RegisterForm /></PublicRoute>} />
 

@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Outlet, Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/auth.store';
 import { BottomNav } from './BottomNav';
 import { useWebSocket } from '../../hooks/useWebSocket';
@@ -21,7 +21,6 @@ const sidebarItems = [
 export function Layout() {
     const { user, logout } = useAuthStore();
     const { pathname } = useLocation();
-    const navigate = useNavigate();
     useWebSocket();
 
     return (
@@ -70,21 +69,7 @@ export function Layout() {
             </aside>
 
             {/* Main content */}
-            <main className="flex-1 pb-20 lg:pb-0 overflow-x-hidden">
-                {/* Mobile top bar */}
-                <header className="flex items-center justify-between px-5 pt-12 pb-4 lg:hidden">
-                    <div className="flex items-center gap-2">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-xl" style={{ background: 'var(--accent)' }}>
-                            <Zap size={15} color="#000" fill="#000" />
-                        </div>
-                        <span className="text-base font-black">TodoFlow</span>
-                    </div>
-                    <button onClick={() => navigate('/settings')} className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm transition-transform active:scale-95"
-                        style={{ background: 'var(--accent)', color: '#000' }}>
-                        {user?.name?.[0]?.toUpperCase() ?? 'U'}
-                    </button>
-                </header>
-
+            <main className="flex-1 pb-24 lg:pb-0 overflow-x-hidden">
                 <Outlet />
             </main>
 

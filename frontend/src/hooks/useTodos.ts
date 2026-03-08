@@ -64,10 +64,25 @@ export function useDeleteTodo() {
 export function useUpdateTodoStatus() {
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({ id, status }: { id: string; status: string }) =>
+        mutationFn: ({ id, status }: { id: string; status: string; previousStatus?: string }) =>
             todosService.updateStatus(id, status),
-        onSuccess: () => {
+        onSuccess: async (_data, variables) => {
             qc.invalidateQueries({ queryKey: TODO_KEYS.all });
+            if (variables.status === 'completed') {
+                const { useGamificationStore } = await import('../store/gamification.store');
+                const store = useGamificationStore.getState();
+
+                if (store.hasBeenRewarded(variables.id)) {
+                    toast.info('Task already completed before');
+                    return;
+                }
+
+                import('../utils/confetti').then((m) => m.fireConfetti());
+                store.recordCompletion(variables.id);
+                const updated = useGamificationStore.getState();
+                const streakMsg = updated.streak >= 2 ? ` | ${updated.streak}-day streak!` : '';
+                toast.success(`Task completed! +25 XP${streakMsg}`);
+            }
         },
         onError: () => toast.error('Failed to update status'),
     });

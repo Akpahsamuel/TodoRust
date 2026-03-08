@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Plus, Trash2, FolderOpen } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Trash2, FolderOpen, ChevronRight } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -15,6 +16,7 @@ type FormData = z.infer<typeof schema>;
 const PRESET_COLORS = ['#E2FF00', '#FF7F3E', '#60a5fa', '#f472b6', '#34d399', '#a78bfa', '#fb923c'];
 
 export function CategoriesPage() {
+    const navigate = useNavigate();
     const { data: categories, isLoading } = useCategories();
     const createCategory = useCreateCategory();
     const deleteCategory = useDeleteCategory();
@@ -82,17 +84,21 @@ export function CategoriesPage() {
             ) : (
                 <div className="space-y-2">
                     {categories?.map((cat: Category) => (
-                        <div key={cat.id} className="card p-4 flex items-center gap-4 animate-fade-in">
+                        <div key={cat.id}
+                            className="card p-4 flex items-center gap-4 animate-fade-in cursor-pointer hover:opacity-90 transition-opacity"
+                            onClick={() => navigate(`/todos?category=${cat.id}`)}
+                        >
                             <div className="w-4 h-4 rounded-full flex-shrink-0" style={{ background: cat.color }} />
                             <div className="flex-1">
                                 <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{cat.name}</p>
                             </div>
                             <button
-                                onClick={() => deleteCategory.mutate(cat.id)}
+                                onClick={(e) => { e.stopPropagation(); deleteCategory.mutate(cat.id); }}
                                 className="w-8 h-8 rounded-xl flex items-center justify-center"
                                 style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171' }}>
                                 <Trash2 size={13} />
                             </button>
+                            <ChevronRight size={16} style={{ color: 'var(--text-muted)' }} />
                         </div>
                     ))}
                 </div>

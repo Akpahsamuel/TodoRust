@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Check, Trash2, Pencil, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { Check, Trash2, Pencil, Calendar, ChevronDown, ChevronUp, Timer } from 'lucide-react';
 import { formatDate, isOverdue, priorityClass, priorityLabel, statusClass, statusLabel } from '../../utils';
 import type { TodoWithTags } from '../../types';
 import { useDeleteTodo, useUpdateTodoStatus } from '../../hooks/useTodos';
 import { todoStatusOptions } from './constants';
+import { FocusTimer } from '../FocusTimer';
 
 interface TodoCardProps {
     todo: TodoWithTags;
@@ -13,17 +14,19 @@ interface TodoCardProps {
 export function TodoCard({ todo, onEdit }: TodoCardProps) {
     const [showStatus, setShowStatus] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [showTimer, setShowTimer] = useState(false);
     const deleteTodo = useDeleteTodo();
     const updateStatus = useUpdateTodoStatus();
     const overdue = isOverdue(todo.due_date) && todo.status !== 'completed';
     const isDone = todo.status === 'completed';
 
     return (
-        <div className={`card p-4 animate-fade-in transition-all duration-200 ${isDone ? 'opacity-60' : ''}`}>
+        <div className={`card p-4 animate-fade-in transition-all duration-200 ${isDone ? 'opacity-60' : ''}`}
+            style={{ position: 'relative', zIndex: showStatus ? 30 : 'auto' }}>
             <div className="flex items-start gap-3">
                 {/* Checkbox */}
                 <button
-                    onClick={() => updateStatus.mutate({ id: todo.id, status: isDone ? 'pending' : 'completed' })}
+                    onClick={() => updateStatus.mutate({ id: todo.id, status: isDone ? 'pending' : 'completed', previousStatus: todo.status })}
                     className="flex-shrink-0 mt-0.5 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200"
                     style={{
                         borderColor: isDone ? 'var(--accent)' : 'rgba(255,255,255,0.2)',
@@ -79,7 +82,7 @@ export function TodoCard({ todo, onEdit }: TodoCardProps) {
                                         <button key={opt.value}
                                             className="block w-full text-left px-3 py-2 text-xs font-medium hover:opacity-80 transition-opacity"
                                             style={{ color: 'var(--text-primary)' }}
-                                            onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: todo.id, status: opt.value }); setShowStatus(false); }}
+                                            onClick={(e) => { e.stopPropagation(); updateStatus.mutate({ id: todo.id, status: opt.value, previousStatus: todo.status }); setShowStatus(false); }}
                                         >
                                             {opt.label}
                                         </button>
@@ -113,6 +116,14 @@ export function TodoCard({ todo, onEdit }: TodoCardProps) {
 
                 {/* Actions */}
                 <div className="flex flex-col gap-1">
+                    {!isDone && (
+                        <button onClick={(e) => { e.stopPropagation(); setShowTimer(true); }}
+                            className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80 transition-opacity"
+                            style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}
+                            title="Focus Timer">
+                            <Timer size={12} />
+                        </button>
+                    )}
                     <button onClick={(e) => { e.stopPropagation(); onEdit(todo); }}
                         className="w-8 h-8 rounded-xl flex items-center justify-center hover:opacity-80 transition-opacity"
                         style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>
@@ -125,6 +136,10 @@ export function TodoCard({ todo, onEdit }: TodoCardProps) {
                     </button>
                 </div>
             </div>
+
+            {showTimer && (
+                <FocusTimer taskTitle={todo.title} onClose={() => setShowTimer(false)} />
+            )}
         </div>
     );
 }

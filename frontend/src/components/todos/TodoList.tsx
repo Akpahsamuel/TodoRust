@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Plus } from 'lucide-react';
 import { useTodos } from '../../hooks/useTodos';
 import { TodoCard } from './TodoCard';
@@ -7,7 +8,13 @@ import { TodoFilters } from './TodoFilters';
 import type { TodoFilter, TodoWithTags } from '../../types';
 
 export function TodoList() {
-    const [filter, setFilter] = useState<TodoFilter>({});
+    const [searchParams] = useSearchParams();
+    const categoryFromUrl = searchParams.get('category') ?? undefined;
+    const [filter, setFilter] = useState<TodoFilter>({ category_id: categoryFromUrl });
+
+    useEffect(() => {
+        setFilter((prev) => ({ ...prev, category_id: categoryFromUrl }));
+    }, [categoryFromUrl]);
     const [editingTodo, setEditingTodo] = useState<TodoWithTags | null>(null);
     const [showForm, setShowForm] = useState(false);
 
